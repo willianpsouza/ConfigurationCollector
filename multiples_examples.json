@@ -1,0 +1,92 @@
+{
+  "base_dir": "./coletas",
+  "timeout_seconds": 30,
+  "concurrency": 5,
+  "max_retries": 2,
+  "ssh_legacy": {
+    "enabled": true
+  },
+  "groups": [
+    {
+      "vendor": "huawei",
+      "username": "admin",
+      "password_env": "HUAWEI_ADMIN_PASS",
+      "assets": [
+        {
+          "name": "CORE01",
+          "address": "10.0.0.1",
+          "port": 22,
+          "protocol": "ssh",
+          "active": true
+        },
+        {
+          "name": "CORE02",
+          "address": "10.0.0.2",
+          "port": 22,
+          "protocol": "ssh",
+          "active": true
+        },
+        {
+          "name": "AGG01-OLD",
+          "address": "10.0.1.1",
+          "port": 23,
+          "protocol": "telnet",
+          "active": true
+        },
+        {
+          "name": "AGG02-MANUTENCAO",
+          "address": "10.0.1.2",
+          "protocol": "ssh",
+          "active": false,
+          "_comment": "Switch em manutenção - não coletar"
+        },
+        {
+          "name": "AGG03-INTEGRACAO",
+          "address": "10.0.1.3",
+          "port": 22,
+          "protocol": "ssh",
+          "username": "integration",
+          "password_env": "INTEGRATION_PASS",
+          "active": true,
+          "_comment": "Usa credenciais específicas de integração"
+        }
+      ]
+    },
+    {
+      "vendor": "zte",
+      "username": "admin",
+      "password_env": "ZTE_ADMIN_PASS",
+      "assets": [
+        {
+          "name": "ZTE-CORE01",
+          "address": "10.1.0.1",
+          "protocol": "ssh",
+          "active": true
+        },
+        {
+          "name": "ZTE-AGG01-TELNET",
+          "address": "10.1.1.1",
+          "port": 23,
+          "protocol": "telnet",
+          "active": true
+        },
+        {
+          "name": "ZTE-ACC01-FUTURO",
+          "address": "10.1.2.1",
+          "protocol": "ssh",
+          "active": false,
+          "_comment": "Switch ainda não instalado"
+        },
+        {
+          "name": "ZTE-ACC02-API",
+          "address": "10.1.2.2",
+          "protocol": "ssh",
+          "username": "api_user",
+          "password": "senha_temporaria_api",
+          "active": true,
+          "_comment": "Credencial específica - NÃO commitar com senha real!"
+        }
+      ]
+    }
+  ]
+}

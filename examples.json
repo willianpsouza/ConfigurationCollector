@@ -1,0 +1,59 @@
+{
+  "base_dir": "./collect",
+  "timeout_seconds": 30,
+  "concurrency": 5,
+  "max_retries": 2,
+  "known_hosts_file": "",
+    "ssh_legacy": {
+    "enabled": true,
+    "kex_algorithms": [
+      "diffie-hellman-group-exchange-sha256",
+      "diffie-hellman-group-exchange-sha1",
+      "diffie-hellman-group14-sha1",
+      "diffie-hellman-group1-sha1"
+    ],
+    "ciphers": [
+      "aes128-ctr",
+      "aes192-ctr",
+      "aes256-ctr",
+      "aes128-cbc",
+      "aes192-cbc",
+      "aes256-cbc",
+      "3des-cbc"
+    ],
+    "macs": [
+      "hmac-sha2-256",
+      "hmac-sha2-512",
+      "hmac-sha1",
+      "hmac-sha1-96"
+    ],
+    "host_key_algorithms": [
+      "ssh-rsa",
+      "ssh-dss"
+    ]
+  },
+  "groups": [
+    {
+      "vendor": "huawei",
+      "username": "huawei_user",
+      "password_env": "HUAWEI_ADMIN_PASS",
+      "assets": [
+        { "name": "SW.CP001.HUAWEI.6730", "address": "10.0.1.1", "port": 22 },
+        { "name": "SW.CP002.HUAWEI.6730", "address": "10.0.2.1", "port": 2222 },
+        { "name": "SW.CP003.HUAWEI.6730", "address": "10.0.3.1", "port": 22 },
+        { "name": "SW.CP099.HUAWEI.6730", "address": "10.0.9.99", "port": 2299 }
+      ]
+    },
+    {
+      "vendor": "zte",
+      "username": "zte_user",
+      "password_env": "ZTE_ADMIN_PASS",
+      "assets": [
+        { "name": "SW.CP011.ZTE.5960X", "address": "198.19.0.10", "port": 22 },
+        { "name": "SW.CP012.ZTE.5960X", "address": "198.19.0.11", "port": 22 },
+        { "name": "SW.CP013.ZTE.5960X", "address": "198.19.0.12", "port": 22 },
+        { "name": "SW.CP014.ZTE.5960X", "address": "198.19.0.13", "port": 22 }
+      ]
+    }
+  ]
+}
