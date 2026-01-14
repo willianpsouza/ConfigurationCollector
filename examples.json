@@ -41,7 +41,7 @@
         { "name": "SW.CP001.HUAWEI.6730", "address": "10.0.1.1", "port": 22 },
         { "name": "SW.CP002.HUAWEI.6730", "address": "10.0.2.1", "port": 2222 },
         { "name": "SW.CP003.HUAWEI.6730", "address": "10.0.3.1", "port": 22 },
-        { "name": "SW.CP099.HUAWEI.6730", "address": "10.0.9.99", "port": 2299 }
+        { "name": "SW.CP099.HUAWEI.6730", "address": "10.0.9.99", "port": 23, "protocol": "telnet" }
       ]
     },
     {
