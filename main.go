@@ -53,11 +53,11 @@ type Asset struct {
 	Name        string `json:"name"`
 	Address     string `json:"address"`
 	Port        int    `json:"port"`
-	Protocol    string `json:"protocol,omitempty"`    // "ssh" | "telnet" (default: "ssh")
-	Username    string `json:"username,omitempty"`    // Override group username
-	Password    string `json:"password,omitempty"`    // Override group password
+	Protocol    string `json:"protocol,omitempty"`     // "ssh" | "telnet" (default: "ssh")
+	Username    string `json:"username,omitempty"`     // Override group username
+	Password    string `json:"password,omitempty"`     // Override group password
 	PasswordEnv string `json:"password_env,omitempty"` // Override group password_env
-	Active      *bool  `json:"active,omitempty"`      // true|false (default: true)
+	Active      *bool  `json:"active,omitempty"`       // true|false (default: true)
 }
 
 type Job struct {
@@ -475,6 +475,7 @@ func commandsForVendor(vendor string) ([]string, error) {
 			"display interface brief",
 			"display interface description",
 			"display interface transceiver",
+			"display lldp neighbor",
 			"display eth-trunk brief",
 			"display bgp peer",
 			"display ospf peer",
@@ -485,14 +486,17 @@ func commandsForVendor(vendor string) ([]string, error) {
 			"terminal length 0",
 			"show version",
 			"show license",
+			"show hardware",
 			"show running-config",
 			"show interface brief",
 			"show interface description",
-			"show interface transceiver",
-			"show port-channel brief",
-			"show bgp summary",
-			"show ospf neighbor",
-			"show isis neighbor",
+			"show lldp neighbor",
+			"show opticalinfo brief",
+			"show temperature detail",
+			"show interface summary",
+			"show ip bgp summary",
+			"show ip ospf neighbor",
+			"show isis topology",
 		}, nil
 	default:
 		return nil, fmt.Errorf("vendor desconhecido: %q (use huawei/zte)", vendor)
