@@ -29,6 +29,7 @@ func main() {
 	changesetPath := flag.String("changeset", "", "changeset.json (comandos por device)")
 	doApply := flag.Bool("apply", false, "APLICA de verdade (sem esta flag = dry-run)")
 	save := flag.Bool("save", false, "persiste a config (save) apos aplicar")
+	saveOnly := flag.Bool("save-only", false, "SO persiste (conecta e roda 'save'), sem enviar comandos; implica -apply")
 	only := flag.String("only", "", "aplicar apenas ao device com este endereco")
 	backupDir := flag.String("backup-dir", "./apply-backups", "onde salvar o backup do running-config")
 	outDir := flag.String("out", "./apply-transcripts", "onde salvar os transcripts da aplicacao")
@@ -80,10 +81,16 @@ func main() {
 	sshRunner := transport.NewSSH(hostKey, legacy)
 	telnetRunner := transport.NewTelnet()
 
+	if *saveOnly {
+		*doApply = true // save-only escreve (save), entao implica apply
+	}
 	mode := "DRY-RUN (nada enviado)"
 	if *doApply {
 		mode = "APLICANDO"
-		if *save {
+		switch {
+		case *saveOnly:
+			mode = "SAVE-ONLY (so persiste)"
+		case *save:
 			mode += " + SAVE"
 		}
 	}
@@ -98,6 +105,7 @@ func main() {
 		OutDir:    *outDir,
 		DoApply:   *doApply,
 		Save:      *save,
+		SaveOnly:  *saveOnly,
 	})
 
 	ok, fail := 0, 0

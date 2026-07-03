@@ -27,8 +27,9 @@ import (
 type Change struct {
 	Address  string   `json:"address"`
 	Comment  string   `json:"comment,omitempty"`
-	Mode     string   `json:"mode,omitempty"` // "commit"|"immediate"|"" (auto por nome)
-	Commands []string `json:"commands"`       // comandos crus de config (sem system-view/return)
+	Mode     string   `json:"mode,omitempty"`    // "commit"|"immediate"|"" (auto por nome)
+	Context  string   `json:"context,omitempty"` // "user-view" roda cru (ex.: clock timezone); "" = system-view
+	Commands []string `json:"commands"`          // comandos crus de config
 }
 
 // ChangeSet e um conjunto de mudancas.
@@ -60,6 +61,7 @@ type Options struct {
 	OutDir    string
 	DoApply   bool // false = dry-run (nao conecta)
 	Save      bool
+	SaveOnly  bool // so persiste (roda "save"), sem enviar comandos
 }
 
 // Result e o resultado por device.
@@ -88,9 +90,16 @@ func Run(ctx context.Context, cs ChangeSet, o Options) []Result {
 		}
 		r.Name = tgt.Name
 		router := isRouter(ch.Mode, tgt.Name)
-		if router {
+		userView := strings.EqualFold(strings.TrimSpace(ch.Context), "user-view")
+		switch {
+		case o.SaveOnly:
+			r.Mode = "save-only"
+			r.NumCmds = 0
+		case userView:
+			r.Mode = "user-view"
+		case router:
 			r.Mode = "commit"
-		} else {
+		default:
 			r.Mode = "immediate"
 		}
 
@@ -122,8 +131,15 @@ func Run(ctx context.Context, cs ChangeSet, o Options) []Result {
 			}
 		}
 
-		cmds := wrap(ch.Commands, router)
-		res, err := runner.RunConfig(ctx, sess, cmds, o.Save, o.Logger)
+		var res transport.ConfigResult
+		var err error
+		if o.SaveOnly {
+			// So persiste: conecta e roda "save" (sem system-view/comandos/commit).
+			res, err = runner.RunConfig(ctx, sess, nil, true, o.Logger)
+		} else {
+			cmds := wrap(ch.Commands, router, userView)
+			res, err = runner.RunConfig(ctx, sess, cmds, o.Save, o.Logger)
+		}
 		r.Transcript = res.Transcript
 		r.CfgErrors = res.Errors
 		if err != nil {
@@ -140,8 +156,15 @@ func Run(ctx context.Context, cs ChangeSet, o Options) []Result {
 	return results
 }
 
-// wrap monta a sequencia completa: system-view, comandos, commit (router), return.
-func wrap(cfg []string, router bool) []string {
+// wrap monta a sequencia a enviar. Em system-view: system-view, comandos,
+// commit (router), return. Em user-view: os comandos crus (ex.: clock timezone),
+// sem system-view/commit (rodam direto no prompt de user-view, efeito imediato).
+func wrap(cfg []string, router, userView bool) []string {
+	if userView {
+		out := make([]string, len(cfg))
+		copy(out, cfg)
+		return out
+	}
 	out := make([]string, 0, len(cfg)+3)
 	out = append(out, "system-view")
 	out = append(out, cfg...)

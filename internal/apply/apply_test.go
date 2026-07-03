@@ -128,16 +128,24 @@ func TestLoadChangeSetMissingFile(t *testing.T) {
 
 func TestWrap(t *testing.T) {
 	tests := []struct {
-		name   string
-		cfg    []string
-		router bool
-		want   []string
+		name     string
+		cfg      []string
+		router   bool
+		userView bool
+		want     []string
 	}{
 		{
 			name:   "switch immediate",
 			cfg:    []string{"vlan 10", "quit"},
 			router: false,
 			want:   []string{"system-view", "vlan 10", "quit", "return"},
+		},
+		{
+			name:     "user-view raw (timezone)",
+			cfg:      []string{"clock timezone BRT minus 03:00:00"},
+			router:   true,
+			userView: true,
+			want:     []string{"clock timezone BRT minus 03:00:00"},
 		},
 		{
 			name:   "router commit",
@@ -154,7 +162,7 @@ func TestWrap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := wrap(tt.cfg, tt.router); !reflect.DeepEqual(got, tt.want) {
+			if got := wrap(tt.cfg, tt.router, tt.userView); !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("wrap = %v, want %v", got, tt.want)
 			}
 		})
