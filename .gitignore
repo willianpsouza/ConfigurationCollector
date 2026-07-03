@@ -1,4 +1,30 @@
-json/*
-assets/*
-.gitignore
+# segredos / dados sensiveis — NUNCA commitar
+access.csv
+*.csv
+targets*.json
+!examples.json
+!multiples_examples.json
+changeset*.json
+coletas/
+apply-backups/
+apply-transcripts/
+*-inventory.csv
+port-map.csv
+audit-*.md
+audit-*.json
+*.cfg
+NE40-*.txt
+
+# binarios
+/collector
+/audit
+/apply
+collector-linux
+apply-linux
+*.exe
+
+# editor / build
 .idea/
+.vscode/
+*.test
+coverage.out

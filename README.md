@@ -1,347 +1,95 @@
-# 🎯 Resumo Executivo - Novas Funcionalidades
+# ConfigurationCollector
 
-## ✨ O que foi adicionado?
+Coletor de backup de configuração de switches/roteadores (Huawei VRP e afins) + auditoria determinística e aplicação de mudanças, escrito em Go.
 
-### 1. 🔌 Suporte a Telnet
-Para switches sem SSH instalado.
+Três binários, um só toolchain:
 
-```json
-{
-  "name": "SWITCH-OLD",
-  "address": "10.0.0.1",
-  "protocol": "telnet"  // ← NOVO!
-}
+- **`collector`** — conecta via SSH/Telnet a partir de um `targets.json`, coleta config + estado (MPLS, interfaces, BGP/OSPF/ISIS) e persiste em disco.
+- **`audit`** — lê as coletas e roda checagens determinísticas (rule engine) + camada opcional de LLM local (Ollama) para documentação/divergências.
+- **`apply`** — aplica change-sets de configuração nos devices, com **dry-run por padrão**, backup do running antes, `commit` em roteador VRP8 e save opcional.
+
+## Arquitetura
+
+```
+cmd/collector   entrypoint da coleta (one-shot; -only, -dry-run)
+cmd/audit       auditoria + relatorios (md/json) + inventarios (csv)
+cmd/apply       aplicacao de change-set (dry-run/-apply/-save)
+
+internal/config     load/validate/resolve de targets.json
+internal/vendor     driver plugavel por fabricante (huawei/zte/mikrotik/cisco)
+internal/transport  SSH (shell+exec) e Telnet, robustos (pager, prompt, idle)
+internal/collector  worker pool + retry + orquestracao
+internal/storage    Store (interface) + Timestamped (arquivos datados)
+internal/parse      parser dos arquivos coletados
+internal/audit      rule engine deterministico + inventarios
+internal/llm        cliente Ollama (documentacao/divergencias)
+internal/apply      aplicacao de mudancas
 ```
 
-**Default:** SSH (se não especificar)
+Adicionar um vendor = implementar `vendor.Driver` e chamar `vendor.Register()` num `init()`; nenhum outro pacote muda.
 
----
+## Uso
 
-### 2. 🔑 Credenciais por Asset
-Override de username/password por dispositivo.
-
-```json
-{
-  "groups": [
-    {
-      "username": "admin",
-      "password_env": "ADMIN_PASS",
-      "assets": [
-        {
-          "name": "SWITCH-NORMAL",
-          "address": "10.0.0.1"
-          // Usa: admin / ADMIN_PASS
-        },
-        {
-          "name": "SWITCH-API",
-          "address": "10.0.0.2",
-          "username": "integration",      // ← NOVO!
-          "password_env": "API_PASS"      // ← NOVO!
-          // Usa: integration / API_PASS
-        }
-      ]
-    }
-  ]
-}
-```
-
----
-
-### 3. ⏸️ Flag Active
-Desabilitar assets temporariamente.
-
-```json
-{
-  "name": "SWITCH-PRODUCAO",
-  "address": "10.0.0.1",
-  "active": true  // ← Será coletado
-}
-
-{
-  "name": "SWITCH-MANUTENCAO",
-  "address": "10.0.0.2",
-  "active": false  // ← NÃO será coletado
-}
-
-{
-  "name": "SWITCH-DEFAULT",
-  "address": "10.0.0.3"
-  // active não especificado = true (default)
-}
-```
-
----
-
-## 📦 Arquivos Criados
-
-### Código Principal
-- **collector-final.go** ⭐ - Versão final com todas as features
-
-### Exemplos JSON
-- **targets-complete.json** - Exemplo completo (todas features juntas)
-- **targets-telnet.json** - Foco em Telnet
-- **targets-custom-credentials.json** - Foco em credenciais específicas
-- **targets-active-inactive.json** - Foco em ativo/inativo
-
-### Documentação
-- **NEW_FEATURES.md** - Guia completo das novas funcionalidades
-
----
-
-## 🚀 Uso Rápido
-
-### Instalação
+### Coleta
 
 ```bash
-# 1. Instalar dependência Telnet
-go get github.com/ziutek/telnet
-
-# 2. Substituir código
-mv collector-final.go collector.go
-
-# 3. Recompilar
-go build -o collector collector.go
+go build -o collector ./cmd/collector
+./collector targets.json                 # coleta tudo
+./collector -only 10.0.0.1 targets.json  # so um device
+./collector -dry-run targets.json        # resolve alvos sem conectar
 ```
 
-### Configuração Básica
+`targets.json` (ver `examples.json` / `multiples_examples.json`):
 
 ```json
 {
   "base_dir": "./coletas",
-  "timeout_seconds": 30,
+  "timeout_seconds": 40,
   "concurrency": 5,
+  "max_retries": 1,
+  "ssh_legacy": { "enabled": true },
   "groups": [
     {
       "vendor": "huawei",
       "username": "admin",
-      "password_env": "HUAWEI_ADMIN_PASS",
+      "password_env": "HUAWEI_PASS",
       "assets": [
-        {
-          "name": "SWITCH-SSH",
-          "address": "10.0.0.1",
-          "protocol": "ssh"
-        },
-        {
-          "name": "SWITCH-TELNET",
-          "address": "10.0.0.2",
-          "protocol": "telnet"
-        },
-        {
-          "name": "SWITCH-API",
-          "address": "10.0.0.3",
-          "username": "api_user",
-          "password_env": "API_PASS"
-        },
-        {
-          "name": "SWITCH-INATIVO",
-          "address": "10.0.0.4",
-          "active": false
-        }
+        { "name": "CORE-01", "address": "10.0.0.1", "port": 22 },
+        { "name": "SW-OLD",  "address": "10.0.0.2", "protocol": "telnet" }
       ]
     }
   ]
 }
 ```
 
-### Variáveis de Ambiente
+Credenciais: `password_env` (recomendado) ou `password`; override por asset. Saída: `base_dir/AAAA-MM-DD/NOME__IP__VENDOR__PROTO__HHMMSS.txt`.
+
+### Auditoria
 
 ```bash
-export HUAWEI_ADMIN_PASS='senha_admin'
-export API_PASS='senha_api'
+go build -o audit ./cmd/audit
+./audit -input ./coletas                 # relatorio + inventarios
+./audit -input ./coletas -focus          # so sinal acionavel (corta ruido)
+./audit -input ./coletas -llm -model qwen2.5:14b   # + camada Ollama
 ```
 
-### Executar
+Saídas: `audit-report.md`, `audit-findings.json`, `ip-inventory.csv`, `port-map.csv`.
+
+Checagens determinísticas incluem: interface de cliente sem controle de banda/estatística, correlação de circuitos VLAN/L2VC/VSI ponta-A↔ponta-B, membership da malha MPLS, IP/rede duplicados, IP público em ativo interno, padronização de NTP/logging/timezone, portas ativas sem configuração e VLANs órfãs.
+
+### Aplicação de mudanças
 
 ```bash
-./collector targets.json
+go build -o apply ./cmd/apply
+./apply -targets targets.json -changeset changeset.json          # dry-run (padrao)
+./apply -targets targets.json -changeset changeset.json -apply   # aplica no running
+./apply -targets targets.json -changeset changeset.json -apply -save   # aplica + persiste
 ```
 
----
+Segurança: dry-run é o padrão; `-apply` é explícito; backup do running-config é feito antes de cada device. Switch VRP5 = imediato; roteador VRP8 = aplicado após `commit`.
 
-## 📊 Hierarquia de Configurações
+## Testes
 
-### Protocolo
+```bash
+go test ./... -cover
 ```
-1. Asset "protocol" (se especificado)
-   ⬇️ (se não)
-2. Default = "ssh"
-```
-
-### Porta
-```
-1. Asset "port" (se especificado)
-   ⬇️ (se não)
-2. Default por protocolo:
-   - SSH = 22
-   - Telnet = 23
-```
-
-### Credenciais
-```
-1. Asset "username"/"password" (se especificados)
-   ⬇️ (se não)
-2. Grupo "username"/"password"
-```
-
-### Active
-```
-1. Asset "active" (se especificado)
-   ⬇️ (se não)
-2. Default = true (ativo)
-```
-
----
-
-## 🎯 Casos de Uso
-
-### Caso 1: Switch sem SSH
-
-```json
-{
-  "name": "OLD-SWITCH",
-  "address": "10.0.0.1",
-  "protocol": "telnet"
-}
-```
-
-### Caso 2: Credencial de Integração
-
-```json
-{
-  "name": "API-SWITCH",
-  "address": "10.0.0.1",
-  "username": "integration",
-  "password_env": "INTEGRATION_PASS"
-}
-```
-
-### Caso 3: Switch em Manutenção
-
-```json
-{
-  "name": "MAINTENANCE-SWITCH",
-  "address": "10.0.0.1",
-  "active": false
-}
-```
-
-### Caso 4: Tudo Junto
-
-```json
-{
-  "name": "COMPLEX-SWITCH",
-  "address": "10.0.0.1",
-  "port": 2323,
-  "protocol": "telnet",
-  "username": "api_user",
-  "password_env": "API_PASS",
-  "active": true
-}
-```
-
----
-
-## ⚠️ Avisos Importantes
-
-### Telnet
-- ❌ **INSEGURO** - tráfego em texto plano
-- ✅ Use apenas em redes isoladas
-- ✅ Sempre prefira SSH quando disponível
-
-### Credenciais por Asset
-- ✅ Útil para integrações
-- ⚠️ Evite senhas em texto plano (`password`)
-- ✅ Prefira variáveis de ambiente (`password_env`)
-
-### Flag Active
-- ✅ Útil para manutenção temporária
-- ✅ Mantém histórico no JSON
-- ⚠️ Não esqueça de reativar depois!
-
----
-
-## 📋 Checklist de Implementação
-
-### Antes de usar
-- [ ] Instalar dependência telnet: `go get github.com/ziutek/telnet`
-- [ ] Substituir código: `mv collector-final.go collector.go`
-- [ ] Recompilar: `go build -o collector collector.go`
-- [ ] Configurar variáveis de ambiente
-- [ ] Testar em 1-2 switches primeiro
-
-### Para Telnet
-- [ ] Confirmar que SSH não está disponível
-- [ ] Verificar que rede está isolada
-- [ ] Documentar motivo do uso
-- [ ] Planejar migração para SSH
-
-### Para Credenciais Específicas
-- [ ] Criar contas de integração se necessário
-- [ ] Configurar variáveis de ambiente
-- [ ] Documentar quais switches usam quais credenciais
-- [ ] Testar permissões das contas
-
-### Para Flag Active
-- [ ] Documentar motivo da desativação
-- [ ] Adicionar comentário no JSON
-- [ ] Definir prazo para reativação
-- [ ] Verificar periodicamente
-
----
-
-## 🎓 Mudanças no Código
-
-### Struct Asset - Novos Campos
-
-```go
-type Asset struct {
-    Name        string  `json:"name"`
-    Address     string  `json:"address"`
-    Port        int     `json:"port"`
-    Protocol    string  `json:"protocol,omitempty"`      // ← NOVO
-    Username    string  `json:"username,omitempty"`      // ← NOVO
-    Password    string  `json:"password,omitempty"`      // ← NOVO
-    PasswordEnv string  `json:"password_env,omitempty"`  // ← NOVO
-    Active      *bool   `json:"active,omitempty"`        // ← NOVO
-}
-```
-
-### Novas Funções
-
-```go
-func collectTelnet(...)  // Coleta via Telnet
-func (a *Asset) GetPassword()  // Resolve senha do asset
-func (a *Asset) IsActive()  // Verifica se asset está ativo
-```
-
----
-
-## 📈 Estatísticas
-
-O coletor agora mostra estatísticas de assets:
-
-```json
-{
-  "time": "2024-12-16T10:30:05Z",
-  "level": "INFO",
-  "msg": "jobs enfileirados",
-  "total_assets": 10,    // ← NOVO
-  "active": 8,           // ← NOVO
-  "inactive": 2          // ← NOVO
-}
-```
-
----
-
-## 🎯 Próximos Passos
-
-1. ✅ Leia NEW_FEATURES.md para documentação completa
-2. ✅ Veja exemplos em targets-*.json
-3. ✅ Instale dependência telnet
-4. ✅ Substitua o código
-5. ✅ Configure seu JSON
-6. ✅ Teste!
-
----
-
-**Tudo pronto para coletar switches com SSH, Telnet, múltiplas credenciais e controle de ativo/inativo! 🚀**
