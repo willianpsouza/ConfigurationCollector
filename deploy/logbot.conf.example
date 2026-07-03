@@ -1,0 +1,17 @@
+# LogBot (Provengo/Skynet) — /etc/provengo/logbot/logbot.conf
+# key = value ; "#" comentario. chmod 600 (contem o token do bot).
+
+# Nome do provedor — usado no /start do bot e como prefixo dos alertas.
+provider = skynet
+
+# Syslog central a seguir.
+log_path = /var/log/skynet.log
+
+# Rate-limit: 1 alerta por (device+interface+evento) a cada N minutos.
+dedup_minutes = 5
+
+# Telegram (bot TelegramLogBot). Preencher token + chat_ids.
+# Dica: rode o bot, mande /start no grupo/topic e ele responde com o chat_id.
+telegram_token =
+critical_chat  =
+warning_chat   =
