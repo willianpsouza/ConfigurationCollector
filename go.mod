@@ -1,6 +1,6 @@
-module switch_config_collector
+module github.com/willianpsouza/ConfigurationCollector
 
-go 1.25.5
+go 1.26
 
 require (
 	github.com/ziutek/telnet v0.1.0
