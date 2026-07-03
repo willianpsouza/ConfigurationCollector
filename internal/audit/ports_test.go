@@ -89,6 +89,37 @@ func TestPortHygiene(t *testing.T) {
 	}
 }
 
+func TestDevicePortsSubinterface(t *testing.T) {
+	// Porta-pai bare (omitida do config pelo Huawei) mas com SUBINTERFACE que
+	// carrega servico (L2VC do cliente). NAO pode virar "unconfigured".
+	brief := strings.Join([]string{
+		"Interface                     PHY     Protocol Description",
+		"GigabitEthernet0/0/7          up      down", // pai: pareceria dark sem o guard
+	}, "\n")
+	ifaces := []parse.Interface{
+		mkIface("GigabitEthernet0/0/7.3000", "TRANSP-CLIENTE-TEKNET",
+			" description TRANSP-CLIENTE-TEKNET", " mpls l2vc 10.99.99.50 3000"),
+	}
+	d := mkDev("DEV-SUB", "10.99.99.13", "", ifaces, map[string]string{
+		"display interface description": brief,
+	})
+
+	var v string
+	for _, p := range devicePorts(d) {
+		if p.Iface == "GigabitEthernet0/0/7" {
+			v = p.Verdict
+		}
+	}
+	if v == "" || strings.HasPrefix(v, "unconfigured") {
+		t.Errorf("porta com subinterface (L2VC) NAO pode ser unconfigured, veio %q", v)
+	}
+	for _, f := range portHygiene(d) {
+		if f.Object == "GigabitEthernet0/0/7" && strings.Contains(f.Rule, "unconfigured") {
+			t.Errorf("nao deveria flagar porta com subif como dark: %+v", f)
+		}
+	}
+}
+
 func TestVerdictOf(t *testing.T) {
 	cases := []struct {
 		adminDown, operUp, hasDesc, hasConfig bool
