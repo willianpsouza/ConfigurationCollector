@@ -59,8 +59,12 @@ func devicePorts(d *parse.Device) []PortEntry {
 		return nil
 	}
 	cfg := map[string]parse.Interface{}
+	hasSubif := map[string]bool{} // porta-pai com subinterface (servico mora na subif)
 	for _, i := range d.Interfaces {
 		cfg[i.Name] = i
+		if dot := strings.IndexByte(i.Name, '.'); dot > 0 {
+			hasSubif[i.Name[:dot]] = true
+		}
 	}
 
 	var out []PortEntry
@@ -82,7 +86,10 @@ func devicePorts(d *parse.Device) []PortEntry {
 			adminDown = true
 		}
 		hasDesc := desc != "" || (inCfg && in.Description != "")
-		hasConfig := inCfg && hasRealConfig(in)
+		// Porta com subinterface (X.N) esta EM USO mesmo com stanza-pai vazia:
+		// o servico (L2VC/QinQ/dot1q) mora na subif. Sem isso, transporte de
+		// cliente vira falso-positivo "unconfigured".
+		hasConfig := (inCfg && hasRealConfig(in)) || hasSubif[iface]
 
 		e := PortEntry{
 			Device: d.Asset, Iface: iface,
