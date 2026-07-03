@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestScanErrors(t *testing.T) {
+func TestScanErrorsStats(t *testing.T) {
 	// Estatisticas do 'display eth-trunk/interface' NAO devem virar erro.
 	stats := "WorkingMode: NORMAL\n  Total Error: 0\n  Input Error: 0\nXGigabitEthernet0/0/36  Down"
 	if errs := scanErrors(stats); len(errs) != 0 {
