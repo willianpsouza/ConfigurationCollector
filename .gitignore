@@ -28,3 +28,6 @@ apply-linux
 .vscode/
 *.test
 coverage.out
+
+# LogBot: config real tem token (o .example fica)
+logbot.conf

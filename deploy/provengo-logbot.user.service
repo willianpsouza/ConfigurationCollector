@@ -1,0 +1,15 @@
+[Unit]
+Description=Provengo LogBot - alertas de rede via Telegram (Skynet)
+Documentation=https://github.com/willianpsouza/ConfigurationCollector
+After=network-online.target
+
+[Service]
+Type=simple
+# Servico de USUARIO (systemctl --user) — nao precisa root/sudo.
+# Binario + config no home do usuario que roda o daemon.
+ExecStart=/home/willian_pires/configcollector/notifier -config /home/willian_pires/configcollector/logbot.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

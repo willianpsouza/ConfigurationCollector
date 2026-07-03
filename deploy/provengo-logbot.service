@@ -1,0 +1,17 @@
+[Unit]
+Description=Provengo LogBot - alertas de rede via Telegram (Skynet)
+Documentation=https://github.com/willianpsouza/ConfigurationCollector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Roda como usuario nao-root: le o skynet.log (644 world-readable) + as coletas
+# do home + o config (chown willian_pires 600). Binario em /opt/provengo/logbot/.
+User=willian_pires
+ExecStart=/opt/provengo/logbot/notifier -config /etc/provengo/logbot/logbot.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
