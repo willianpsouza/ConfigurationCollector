@@ -67,7 +67,7 @@ func TestParseClassify(t *testing.T) {
 func TestFormat(t *testing.T) {
 	e, _ := Parse(optLine)
 	s := e.Format(54)
-	for _, want := range []string{"🔴", "S6720-POPDAVO-ITQ", "XGigabitEthernet0/0/13", "optico", "Rx -18.83", "54x"} {
+	for _, want := range []string{"🔴", "S6720-POPDAVO-ITQ", "(10.99.99.13)", "XGigabitEthernet0/0/13", "optico", "Rx -18.83", "54x"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("Format sem %q:\n%s", want, s)
 		}

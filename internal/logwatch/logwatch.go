@@ -22,6 +22,7 @@ type Event struct {
 	Raw      string
 	Time     string
 	Device   string
+	Addr     string // IP de gerencia do device (10.99.99.N), extraido do nome
 	Module   string
 	Sev      int
 	Mnemonic string
@@ -67,6 +68,7 @@ func Parse(line string) (Event, bool) {
 	if t := reTime.FindStringSubmatch(line); t != nil {
 		e.Time = t[1]
 	}
+	e.Addr = DeviceAddr(e.Device)
 	e.Iface = extractIface(e.Msg)
 	e.Category, e.Group = classify(e)
 	if e.Category == Ignore {
@@ -145,6 +147,9 @@ func (e Event) Format(count int) string {
 	}
 	var b strings.Builder
 	b.WriteString(emoji + " " + short(e.Device))
+	if e.Addr != "" {
+		b.WriteString(" (" + e.Addr + ")")
+	}
 	if e.Iface != "" {
 		b.WriteString(" " + e.Iface)
 	}
