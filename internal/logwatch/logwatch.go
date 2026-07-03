@@ -30,6 +30,8 @@ type Event struct {
 	Category Category
 	Group    string // "optico" | "hardware" | "bgp" | "ospf" | "link"
 	Desc     string // descricao da interface (enriquecido do config coletado)
+	IP       string // IP/prefix da interface (enriquecido)
+	VLAN     string // VLAN da interface (enriquecido)
 }
 
 // Key identifica o evento para dedup: device + interface + mnemonic.
@@ -155,6 +157,16 @@ func (e Event) Format(count int) string {
 	}
 	if count > 1 {
 		b.WriteString("  [" + strconv.Itoa(count) + "x em 5min]")
+	}
+	var meta []string
+	if e.IP != "" {
+		meta = append(meta, "IP "+e.IP)
+	}
+	if e.VLAN != "" {
+		meta = append(meta, "VLAN "+e.VLAN)
+	}
+	if len(meta) > 0 {
+		b.WriteString("\n" + strings.Join(meta, " · "))
 	}
 	if e.Msg != "" {
 		msg := e.Msg

@@ -15,9 +15,12 @@ interface XGigabitEthernet0/0/13
 #
 interface Vlanif274
  description --ITX-S5730-VOCALDTC--
+ ip address 168.195.100.1 255.255.255.0
 #
 interface GigabitEthernet0/0/100
  description CLIENTE-BANCO-XPTO
+ vlan-type dot1q 2045
+ ip address 192.168.10.1 255.255.255.252
 #
 interface GigabitEthernet0/0/9
 #
@@ -54,29 +57,36 @@ func TestDeviceAddr(t *testing.T) {
 	}
 }
 
-func TestDescribeExact(t *testing.T) {
+func TestInfoExact(t *testing.T) {
 	s := setupStore(t)
-	if d := s.Describe("10.99.99.13", "XGigabitEthernet0/0/13"); d != "ROTA_UBERABA-SATURNONET" {
-		t.Errorf("desc = %q", d)
+	if i := s.Info("10.99.99.13", "XGigabitEthernet0/0/13"); i.Desc != "ROTA_UBERABA-SATURNONET" {
+		t.Errorf("desc = %q", i.Desc)
 	}
-	if d := s.Describe("10.99.99.13", "GigabitEthernet0/0/100"); d != "CLIENTE-BANCO-XPTO" {
-		t.Errorf("desc = %q", d)
+	// GE0/0/100: desc + dot1q VLAN 2045 + IP /30.
+	i := s.Info("10.99.99.13", "GigabitEthernet0/0/100")
+	if i.Desc != "CLIENTE-BANCO-XPTO" || i.VLAN != "2045" || i.IP != "192.168.10.1/30" {
+		t.Errorf("info GE0/0/100 = %+v", i)
 	}
-	// interface sem description -> vazio.
-	if d := s.Describe("10.99.99.13", "GigabitEthernet0/0/9"); d != "" {
-		t.Errorf("iface sem desc deveria ser vazio, veio %q", d)
+	// Vlanif274: VLAN vem do nome + IP /24.
+	v := s.Info("10.99.99.13", "Vlanif274")
+	if v.VLAN != "274" || v.IP != "168.195.100.1/24" {
+		t.Errorf("info Vlanif274 = %+v", v)
 	}
-	// device/iface desconhecidos -> vazio.
-	if d := s.Describe("10.99.99.99", "X"); d != "" {
-		t.Errorf("device desconhecido = %q", d)
+	// interface sem nada util -> Empty.
+	if i := s.Info("10.99.99.13", "GigabitEthernet0/0/9"); !i.Empty() {
+		t.Errorf("iface vazia deveria ser Empty, veio %+v", i)
+	}
+	// device desconhecido -> Empty.
+	if i := s.Info("10.99.99.99", "X"); !i.Empty() {
+		t.Errorf("device desconhecido = %+v", i)
 	}
 }
 
-func TestDescribeTailFallback(t *testing.T) {
+func TestInfoTailFallback(t *testing.T) {
 	s := setupStore(t)
 	// forma curta (XGE) nao casa exato -> fallback pelo tail 0/0/13 (unico).
-	if d := s.Describe("10.99.99.13", "XGE0/0/13"); d != "ROTA_UBERABA-SATURNONET" {
-		t.Errorf("fallback tail = %q", d)
+	if i := s.Info("10.99.99.13", "XGE0/0/13"); i.Desc != "ROTA_UBERABA-SATURNONET" {
+		t.Errorf("fallback tail = %+v", i)
 	}
 }
 
@@ -104,10 +114,27 @@ func TestStoreDisabled(t *testing.T) {
 	}
 }
 
-func TestFormatWithDesc(t *testing.T) {
+func TestFormatWithEnrich(t *testing.T) {
 	e, _ := Parse(optLine)
-	e.Desc = "ROTA_UBERABA-SATURNONET"
-	if s := e.Format(1); !strings.Contains(s, "「ROTA_UBERABA-SATURNONET」") {
-		t.Errorf("Format sem descricao: %s", s)
+	e.Desc, e.IP, e.VLAN = "ROTA_UBERABA-SATURNONET", "192.168.10.1/30", "2045"
+	s := e.Format(1)
+	for _, want := range []string{"「ROTA_UBERABA-SATURNONET」", "IP 192.168.10.1/30", "VLAN 2045"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("Format sem %q:\n%s", want, s)
+		}
+	}
+}
+
+func TestMaskToPrefix(t *testing.T) {
+	cases := map[string]string{
+		"255.255.255.252": "30",
+		"255.255.255.0":   "24",
+		"255.255.0.0":     "16",
+		"255.255.255.255": "32",
+	}
+	for mask, want := range cases {
+		if got := maskToPrefix(mask); got != want {
+			t.Errorf("maskToPrefix(%q) = %q, quero %q", mask, got, want)
+		}
 	}
 }

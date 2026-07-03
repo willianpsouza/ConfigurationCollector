@@ -78,7 +78,8 @@ func (w *Watcher) onLine(line string) {
 		return
 	}
 	if w.store.Enabled() {
-		ev.Desc = w.store.Describe(DeviceAddr(ev.Device), ev.Iface)
+		info := w.store.Info(DeviceAddr(ev.Device), ev.Iface)
+		ev.Desc, ev.IP, ev.VLAN = info.Desc, info.IP, info.VLAN
 	}
 	chat := w.cfg.CriticalChat
 	if ev.Category == Warning {
