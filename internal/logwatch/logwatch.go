@@ -29,6 +29,7 @@ type Event struct {
 	Msg      string
 	Category Category
 	Group    string // "optico" | "hardware" | "bgp" | "ospf" | "link"
+	Desc     string // descricao da interface (enriquecido do config coletado)
 }
 
 // Key identifica o evento para dedup: device + interface + mnemonic.
@@ -144,6 +145,9 @@ func (e Event) Format(count int) string {
 	b.WriteString(emoji + " " + short(e.Device))
 	if e.Iface != "" {
 		b.WriteString(" " + e.Iface)
+	}
+	if e.Desc != "" {
+		b.WriteString(" 「" + e.Desc + "」")
 	}
 	b.WriteString(" — " + e.Group + "/" + e.Mnemonic)
 	if rx, ok := e.RxPower(); ok {

@@ -10,6 +10,10 @@ log_path = /var/log/skynet.log
 # Rate-limit: 1 alerta por (device+interface+evento) a cada N minutos.
 dedup_minutes = 5
 
+# Enriquecimento: diretorio das coletas p/ anexar a descricao da porta ao
+# alerta (ex.: "GE0/0/100 「CLIENTE-XYZ」"). Vazio = desabilitado.
+coletas_dir = /home/willian_pires/configcollector/coletas
+
 # Telegram (bot TelegramLogBot). Preencher token + chat_ids.
 # Dica: rode o bot, mande /start no grupo/topic e ele responde com o chat_id.
 telegram_token =

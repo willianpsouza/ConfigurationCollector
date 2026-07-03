@@ -18,6 +18,7 @@ type Watcher struct {
 	cfg    Config
 	tg     *telegram.Client
 	logger *slog.Logger
+	store  *ConfigStore // enriquecimento com descricao da porta (opcional)
 
 	mu   sync.Mutex
 	last map[string]sentState // dedup por Event.Key()
@@ -30,15 +31,40 @@ type sentState struct {
 
 // New cria o Watcher.
 func New(cfg Config, tg *telegram.Client, logger *slog.Logger) *Watcher {
-	return &Watcher{cfg: cfg, tg: tg, logger: logger, last: map[string]sentState{}}
+	w := &Watcher{cfg: cfg, tg: tg, logger: logger, last: map[string]sentState{},
+		store: NewConfigStore(cfg.ColetasDir)}
+	return w
 }
 
-// Run inicia o poller de comandos e o tail do log (bloqueia ate ctx cancelar).
+// Run inicia o poller de comandos, o reload das coletas e o tail do log
+// (bloqueia ate ctx cancelar).
 func (w *Watcher) Run(ctx context.Context) error {
 	go w.commandLoop(ctx)
+	if w.store.Enabled() {
+		if err := w.store.Reload(); err != nil {
+			w.logger.Warn("falha carregando coletas", "error", err, "dir", w.cfg.ColetasDir)
+		}
+		go w.reloadLoop(ctx)
+	}
 	w.logger.Info("logbot iniciado", "provider", w.cfg.Provider, "log", w.cfg.LogPath,
-		"dedup", w.cfg.DedupWindow.String())
+		"dedup", w.cfg.DedupWindow.String(), "enriquece", w.store.Enabled())
 	return w.tail(ctx)
+}
+
+// reloadLoop recarrega o indice das coletas periodicamente (collector roda diario).
+func (w *Watcher) reloadLoop(ctx context.Context) {
+	t := time.NewTicker(30 * time.Minute)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if err := w.store.Reload(); err != nil {
+				w.logger.Warn("falha recarregando coletas", "error", err)
+			}
+		}
+	}
 }
 
 // onLine processa uma linha do log.
@@ -50,6 +76,9 @@ func (w *Watcher) onLine(line string) {
 	count, send := w.rateLimit(ev)
 	if !send {
 		return
+	}
+	if w.store.Enabled() {
+		ev.Desc = w.store.Describe(DeviceAddr(ev.Device), ev.Iface)
 	}
 	chat := w.cfg.CriticalChat
 	if ev.Category == Warning {

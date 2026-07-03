@@ -18,6 +18,7 @@ type Config struct {
 	Token        string        // token do bot Telegram
 	CriticalChat string        // chat_id p/ CRITICO (optico/peer-down/hardware)
 	WarningChat  string        // chat_id p/ AVISO (link)
+	ColetasDir   string        // diretorio das coletas p/ enriquecer com a descricao da porta (vazio = off)
 }
 
 // LoadConfig le o arquivo key=value. Linhas: "chave = valor"; "#" e comentario.
@@ -51,6 +52,7 @@ func LoadConfig(path string) (*Config, error) {
 		Token:        kv["telegram_token"],
 		CriticalChat: kv["critical_chat"],
 		WarningChat:  kv["warning_chat"],
+		ColetasDir:   kv["coletas_dir"],
 	}
 	mins := 5
 	if v := kv["dedup_minutes"]; v != "" {
