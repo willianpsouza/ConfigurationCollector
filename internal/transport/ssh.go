@@ -396,6 +396,12 @@ func (t *SSH) RunConfig(ctx context.Context, s Session, cmds []string, save bool
 		}
 		out, _ := readStream(ctx, stream, stdin, s.Timeout, idle)
 		tr.WriteString(out)
+		// Responde automaticamente prompts [Y/N] emitidos pelo comando.
+		for i := 0; i < 3 && awaitsConfirm(out); i++ {
+			_, _ = stdin.Write([]byte("y\n"))
+			out, _ = readStream(ctx, stream, stdin, s.Timeout, idle)
+			tr.WriteString(out)
+		}
 	}
 
 	if save {

@@ -32,6 +32,20 @@ type ConfigRunner interface {
 // um comando de config.
 var reCfgError = regexp.MustCompile(`(?i)error:|unrecognized command|wrong parameter|incomplete command|ambiguous command|% invalid|% unrecognized|too many parameters|permission denied|command not found`)
 
+// reConfirm casa prompts de confirmacao interativa ([Y/N], "Are you sure",
+// "Continue?") que alguns comandos de config emitem no meio (ex.: transceiver
+// non-certified-alarm disable). O runner responde "y" automaticamente.
+var reConfirm = regexp.MustCompile(`(?i)\[y/n\]|\[yes/no\]|are you sure|continue\s*\?`)
+
+// awaitsConfirm informa se a cauda da saida esta pedindo confirmacao Y/N.
+func awaitsConfirm(out string) bool {
+	const tail = 200
+	if len(out) > tail {
+		out = out[len(out)-tail:]
+	}
+	return reConfirm.MatchString(out)
+}
+
 // scanErrors extrai as linhas da saida que indicam erro.
 func scanErrors(transcript string) []string {
 	var errs []string

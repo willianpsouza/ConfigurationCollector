@@ -121,6 +121,12 @@ func (t *Telnet) RunConfig(ctx context.Context, s Session, cmds []string, save b
 		}
 		out, _ := readTelnetRobust(ctx, conn, s.Timeout, idle)
 		tr.WriteString(out)
+		// Responde automaticamente prompts [Y/N] emitidos pelo comando.
+		for i := 0; i < 3 && awaitsConfirm(out); i++ {
+			_, _ = conn.Write([]byte("y\n"))
+			out, _ = readTelnetRobust(ctx, conn, s.Timeout, idle)
+			tr.WriteString(out)
+		}
 	}
 
 	if save {
