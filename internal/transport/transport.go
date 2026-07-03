@@ -28,9 +28,11 @@ type ConfigRunner interface {
 	RunConfig(ctx context.Context, s Session, cmds []string, save bool, logger *slog.Logger) (ConfigResult, error)
 }
 
-// reCfgError casa marcadores de erro tipicos de CLI (Huawei/Cisco) na saida de
-// um comando de config.
-var reCfgError = regexp.MustCompile(`(?i)error:|unrecognized command|wrong parameter|incomplete command|ambiguous command|% invalid|% unrecognized|too many parameters|permission denied|command not found`)
+// reCfgError casa marcadores de erro tipicos de CLI (Huawei/Cisco). Para "Error:"
+// exige que venha seguido de TEXTO ("Error: invalid...") e nao de um numero, para
+// nao casar contadores de estatistica como "Total Error: 0" / "Input Error: 0" do
+// 'display interface/eth-trunk'.
+var reCfgError = regexp.MustCompile(`(?i)error:\s*[a-z]|unrecognized command|wrong parameter|incomplete command|ambiguous command|% invalid|% unrecognized|too many parameters|permission denied|command not found`)
 
 // reConfirm casa prompts de confirmacao interativa ([Y/N], "Are you sure",
 // "Continue?") que alguns comandos de config emitem no meio (ex.: transceiver
